@@ -13,7 +13,7 @@ import utilities.ConfigReader;
 
 public class TrelloTest {
 
-    @Test
+    @Test (priority = 1)
     //createTrelloBoard
     public void createTrelloBoard() throws UnirestException{
         HttpResponse<String> response = Unirest.post("https://api.trello.com/1/boards/")
