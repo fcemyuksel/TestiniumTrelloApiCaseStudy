@@ -13,7 +13,7 @@ import utilities.ConfigReader;
 
 public class TrelloTest {
 
-    @Test (priority = 1)
+    @Test
     //createTrelloBoard
     public void createTrelloBoard() throws UnirestException{
         HttpResponse<String> response = Unirest.post("https://api.trello.com/1/boards/")
@@ -28,7 +28,7 @@ public class TrelloTest {
     }
 
 
-    @Test (priority = 2)
+    @Test (dependsOnMethods = "createTrelloBoard")
     //createTrelloListOnBoard
     public void createTrelloListOnBoard() throws UnirestException, InterruptedException {
         Thread.sleep(500);
@@ -45,7 +45,7 @@ public class TrelloTest {
     }
 
 
-    @Test (priority = 3)
+    @Test (dependsOnMethods = "createTrelloListOnBoard")
     //createTrelloCard1OnList
     public void createTrelloCard1OnList() throws UnirestException, InterruptedException {
         Thread.sleep(500);
@@ -61,7 +61,7 @@ public class TrelloTest {
         ConfigReader.setProperty("cardId1", jsonResponse.get("id").getAsString());
     }
 
-    @Test (priority = 4)
+    @Test (dependsOnMethods = "createTrelloCard1OnList" )
     //createTrelloCard2OnList
     public void createTrelloCard2OnList() throws UnirestException, InterruptedException {
         Thread.sleep(500);
@@ -78,7 +78,7 @@ public class TrelloTest {
     }
 
 
-    @Test (priority = 5)
+    @Test (dependsOnMethods = "createTrelloCard2OnList")
     //updateTrelloCardOnListRandomly
     public void updateTrelloCardOnListRandomly() throws UnirestException, InterruptedException {
         Thread.sleep(500);
@@ -102,7 +102,7 @@ public class TrelloTest {
                 .asJson();
 
     }
-    @Test (priority = 6)
+    @Test (dependsOnMethods = "updateTrelloCardOnListRandomly")
    //deleteTrelloCardOnList
     public void deleteTrelloCardOnList() throws UnirestException, InterruptedException {
         Thread.sleep(500);
@@ -112,7 +112,7 @@ public class TrelloTest {
                 .asString();
     }
 
-    @Test (priority = 7)
+    @Test (dependsOnMethods = "deleteTrelloCardOnList")
     //deleteTrelloCard2OnList
     public void deleteTrelloCard2OnList() throws UnirestException, InterruptedException {
         Thread.sleep(500);
@@ -123,7 +123,7 @@ public class TrelloTest {
 
     }
 
-    @Test (priority = 8)
+    @Test (dependsOnMethods = "deleteTrelloCard2OnList")
     //deleteTrelloBoard
     public void deleteTrelloBoard() throws UnirestException, InterruptedException {
         Thread.sleep(500);
