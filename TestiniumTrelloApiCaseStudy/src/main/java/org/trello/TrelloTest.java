@@ -1,136 +1,185 @@
 package org.trello;
 
+import io.restassured.RestAssured;
+import io.restassured.http.ContentType;
+import org.testng.ISuite;
+import org.testng.ITestContext;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.mashape.unirest.http.HttpResponse;
-import com.mashape.unirest.http.JsonNode;
-import com.mashape.unirest.http.Unirest;
-import com.mashape.unirest.http.exceptions.UnirestException;
-import org.junit.jupiter.api.Order;
 import utilities.ConfigReader;
-
+import static io.restassured.RestAssured.given;
 
 public class TrelloTest {
 
-    @Test (priority = 1)
-    //createTrelloBoard
-    public void createTrelloBoard() throws UnirestException{
-        HttpResponse<String> response = Unirest.post("https://api.trello.com/1/boards/")
-                .queryString("name", ConfigReader.getProperty("boardName"))
-                .queryString("key", ConfigReader.getProperty("APIKey"))
-                .queryString("token", ConfigReader.getProperty("APIToken"))
-                .asString();
+    private static final String API_TOKEN = ConfigReader.getProperty("APIToken");
+    private static final String API_KEY = ConfigReader.getProperty("APIKey");
+    private static final String BOARD_ENDPOINT = "/boards";
+    private static final String LISTS_ENDPOINT = "/lists";
+    private static final String CARDS_ENDPOINT = "/cards";
 
-        System.out.println(response.getBody());
-        JsonObject jsonResponse = JsonParser.parseString(response.getBody()).getAsJsonObject();
-        ConfigReader.setProperty("boardId", jsonResponse.get("id").getAsString());
+
+    @BeforeClass
+    public static void setup(ITestContext context) {
+        // Set up the base URI for RestAssured using the Trello base URL from configuration
+        RestAssured.baseURI = ConfigReader.getProperty("TrelloBaseUrl");
+
+        // Access the test suite to store and share common attributes across test methods
+        ISuite suite = context.getSuite();
+
+        // Set test attributes for reuse in different test methods
+        suite.setAttribute("listName", "Trello List");
+        suite.setAttribute("cardName2", "Trello Card2");
+        suite.setAttribute("boardName", "Trello Board");
+        suite.setAttribute("cardName1", "Trello Card1");
     }
 
 
-    @Test (dependsOnMethods = "createTrelloBoard")
-    //createTrelloListOnBoard
-    public void createTrelloListOnBoard() throws UnirestException, InterruptedException {
-        Thread.sleep(500);
-        HttpResponse<String> response = Unirest.post("https://api.trello.com/1/lists")
-                .queryString("name", ConfigReader.getProperty("listName"))
-                .queryString("idBoard", ConfigReader.getProperty("boardId"))
-                .queryString("key", ConfigReader.getProperty("APIKey"))
-                .queryString("token", ConfigReader.getProperty("APIToken"))
-                .asString();
+    @Test(priority = 1)
+    public void createTrelloBoardAndStoreId(ITestContext context) {
+        // Retrieve board name from suite attributes
+        ISuite suite = context.getSuite();
+        String boardName = (String) suite.getAttribute("boardName");
 
-        System.out.println(response.getBody());
-        JsonObject jsonResponse = JsonParser.parseString(response.getBody()).getAsJsonObject();
-        ConfigReader.setProperty("listId", jsonResponse.get("id").getAsString());
+        // Create a Trello board and store the board ID in suite attributes
+        String boardId = given()
+                .contentType(ContentType.JSON)
+                .queryParams("name", boardName, "key", API_KEY, "token", API_TOKEN)
+                .when()
+                .post(BOARD_ENDPOINT)
+                .then()
+                .statusCode(200)
+                .extract().jsonPath().get("id");
+
+
+        suite.setAttribute("boardId", boardId);
     }
 
 
-    @Test (dependsOnMethods = "createTrelloListOnBoard")
-    //createTrelloCard1OnList
-    public void createTrelloCard1OnList() throws UnirestException, InterruptedException {
-        Thread.sleep(500);
-        HttpResponse<JsonNode> response = Unirest.post("https://api.trello.com/1/cards")
-                .header("Accept", "application/json")
-                .queryString("name", ConfigReader.getProperty("cardName1"))
-                .queryString("idList", ConfigReader.getProperty("listId"))
-                .queryString("key", ConfigReader.getProperty("APIKey"))
-                .queryString("token", ConfigReader.getProperty("APIToken"))
-                .asJson();
+    @Test(dependsOnMethods = "createTrelloBoardAndStoreId")
+    public void createTrelloListOnBoardAndStoreId(ITestContext context) {
+        // Retrieve list name and board ID from suite attributes
+        ISuite suite = context.getSuite();
+        String listName = (String) suite.getAttribute("listName");
+        String boardId = (String) suite.getAttribute("boardId");
 
-        JsonObject jsonResponse = JsonParser.parseString(response.getBody().toString()).getAsJsonObject();
-        ConfigReader.setProperty("cardId1", jsonResponse.get("id").getAsString());
-    }
+        // Create a Trello list on the specified board and store the list ID in suite attributes
+        String listId = given()
+                .contentType(ContentType.JSON)
+                .queryParams("name", listName, "idBoard", boardId, "key", API_KEY, "token", API_TOKEN)
+                .when()
+                .post(LISTS_ENDPOINT)
+                .then()
+                .statusCode(200)
+                .extract().jsonPath().get("id");
 
-    @Test (dependsOnMethods = "createTrelloCard1OnList" )
-    //createTrelloCard2OnList
-    public void createTrelloCard2OnList() throws UnirestException, InterruptedException {
-        Thread.sleep(500);
-        HttpResponse<JsonNode> response = Unirest.post("https://api.trello.com/1/cards")
-                .header("Accept", "application/json")
-                .queryString("name", ConfigReader.getProperty("cardName2"))
-                .queryString("idList", ConfigReader.getProperty("listId"))
-                .queryString("key", ConfigReader.getProperty("APIKey"))
-                .queryString("token", ConfigReader.getProperty("APIToken"))
-                .asJson();
-
-        JsonObject jsonResponse = JsonParser.parseString(response.getBody().toString()).getAsJsonObject();
-        ConfigReader.setProperty("cardId2", jsonResponse.get("id").getAsString());
+        // Set the created list ID in suite attributes for potential future use
+        suite.setAttribute("listId", listId);
     }
 
 
-    @Test (dependsOnMethods = "createTrelloCard2OnList")
-    //updateTrelloCardOnListRandomly
-    public void updateTrelloCardOnListRandomly() throws UnirestException, InterruptedException {
-        Thread.sleep(500);
-        String cardID;
+    @Test(dependsOnMethods = "createTrelloListOnBoardAndStoreId")
+    public void createTrelloCard1OnListAndStoreId(ITestContext context) {
+        // Retrieve card name and list ID from suite attributes
+        ISuite suite = context.getSuite();
+        String cardName1 = (String) suite.getAttribute("cardName1");
+        String listId = (String) suite.getAttribute("listId");
+
+        // Create a Trello Card 1 on the specified list and store the card ID in suite attributes
+        String cardId1 = given()
+                .contentType(ContentType.JSON)
+                .queryParams("name", cardName1, "idList", listId, "key", API_KEY, "token", API_TOKEN)
+                .when()
+                .post(CARDS_ENDPOINT)
+                .then()
+                .statusCode(200)
+                .extract().jsonPath().get("id");
+
+        // Set the created Card 1 ID in suite attributes for potential future use
+        suite.setAttribute("cardId1", cardId1);
+    }
+
+
+    @Test(dependsOnMethods = "createTrelloCard1OnListAndStoreId")
+    public void createTrelloCard2OnListAndStoreId (ITestContext context) {
+        // Retrieve card name and list ID from suite attributes
+        ISuite suite = context.getSuite();
+        String cardName2 = (String) suite.getAttribute("cardName2");
+        String listId = (String) suite.getAttribute("listId");
+
+        // Create a Trello Card 2 on the specified list and store the card ID in suite attributes
+        String cardId2 = given()
+                .contentType(ContentType.JSON)
+                .queryParams("name", cardName2, "idList", listId, "key", API_KEY, "token", API_TOKEN)
+                .when()
+                .post(CARDS_ENDPOINT)
+                .then()
+                .statusCode(200)
+                .extract().jsonPath().get("id");
+
+        // Set the created Card 2 ID in suite attributes for potential future use
+        suite.setAttribute("cardId2", cardId2);
+    }
+
+
+    @Test(dependsOnMethods = "createTrelloCard2OnListAndStoreId")
+    public void updateTrelloCardOnListRandomly(ITestContext context) {
+        ISuite suite = context.getSuite();
+        // Retrieve random card ID, list ID, and create an update request with new details
         int tmp = (int) (Math.random() * 1) + 1;
-        if (tmp == 1) {
-            cardID = ConfigReader.getProperty("cardId1");
-        } else {
-            cardID = ConfigReader.getProperty("cardId2");
-        }
-        String urlUpdated = "https://api.trello.com/1/cards/" + cardID;
+        String cardID = tmp == 1 ? (String) suite.getAttribute("cardId1") : (String) suite.getAttribute("cardId2");
+        String listId = (String) suite.getAttribute("listId");
 
-        HttpResponse<JsonNode> response = Unirest.put(urlUpdated)
-                .header("Accept", "application/json")
-                .queryString("id", cardID)
-                .queryString("name", "Trello Card Updated")
-                .queryString("color", "blue")
-                .queryString("idList", ConfigReader.getProperty("listId"))
-                .queryString("key", ConfigReader.getProperty("APIKey"))
-                .queryString("token", ConfigReader.getProperty("APIToken"))
-                .asJson();
-
-    }
-    @Test (dependsOnMethods = "updateTrelloCardOnListRandomly")
-   //deleteTrelloCardOnList
-    public void deleteTrelloCardOnList() throws UnirestException, InterruptedException {
-        Thread.sleep(500);
-        HttpResponse<String> response = Unirest.delete("https://api.trello.com/1/cards/" + ConfigReader.getProperty("cardId1"))
-                .queryString("key", ConfigReader.getProperty("APIKey"))
-                .queryString("token", ConfigReader.getProperty("APIToken"))
-                .asString();
+        given()
+                .contentType(ContentType.JSON)
+                .queryParams("id", cardID, "name", "Trello Card Updated", "color", "blue", "idList", listId, "key", API_KEY, "token", API_TOKEN)
+                .when()
+                .put(CARDS_ENDPOINT + "/" + cardID)
+                .then()
+                .statusCode(200);
     }
 
-    @Test (dependsOnMethods = "deleteTrelloCardOnList")
-    //deleteTrelloCard2OnList
-    public void deleteTrelloCard2OnList() throws UnirestException, InterruptedException {
-        Thread.sleep(500);
-        HttpResponse<String> response = Unirest.delete("https://api.trello.com/1/cards/" + ConfigReader.getProperty("cardId2"))
-                .queryString("key", ConfigReader.getProperty("APIKey"))
-                .queryString("token", ConfigReader.getProperty("APIToken"))
-                .asString();
 
+    @Test(dependsOnMethods = "updateTrelloCardOnListRandomly")
+    public void deleteTrelloCardOnList(ITestContext context) {
+        // Retrieve Card 1 ID from suite attributes and send a request to delete the card
+        ISuite suite = context.getSuite();
+        String cardId1 = (String) suite.getAttribute("cardId1");
+
+        given()
+                .queryParams("key", API_KEY, "token", API_TOKEN)
+                .when()
+                .delete(CARDS_ENDPOINT + "/" + cardId1)
+                .then()
+                .statusCode(200);
     }
 
-    @Test (dependsOnMethods = "deleteTrelloCard2OnList")
-    //deleteTrelloBoard
-    public void deleteTrelloBoard() throws UnirestException, InterruptedException {
-        Thread.sleep(500);
-        HttpResponse<String> response = Unirest.delete("https://api.trello.com/1/boards/" + ConfigReader.getProperty("boardId"))
-                .queryString("key", ConfigReader.getProperty("APIKey"))
-                .queryString("token", ConfigReader.getProperty("APIToken"))
-                .asString();
 
+    @Test(dependsOnMethods = "deleteTrelloCardOnList")
+    public void deleteTrelloCard2OnList(ITestContext context) {
+        // Retrieve Card 2 ID from suite attributes and send a request to delete the card
+        ISuite suite = context.getSuite();
+        String cardId2 = (String) suite.getAttribute("cardId2");
+
+        given()
+                .queryParams("key", API_KEY, "token", API_TOKEN)
+                .when()
+                .delete(CARDS_ENDPOINT + "/" + cardId2)
+                .then()
+                .statusCode(200);
+    }
+
+    
+    @Test(dependsOnMethods = "deleteTrelloCard2OnList")
+    public void deleteTrelloBoardAndVerifyDeletion (ITestContext context) {
+        // Retrieve Board ID from suite attributes and send a request to delete the board
+        ISuite suite = context.getSuite();
+        String boardId = (String) suite.getAttribute("boardId");
+
+        given()
+                .queryParams("key", API_KEY, "token", API_TOKEN)
+                .when()
+                .delete(BOARD_ENDPOINT + "/" + boardId)
+                .then()
+                .statusCode(200);
     }
 }
