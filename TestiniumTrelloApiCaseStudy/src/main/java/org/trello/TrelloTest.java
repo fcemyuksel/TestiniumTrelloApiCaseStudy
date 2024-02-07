@@ -24,7 +24,7 @@ public class TrelloTest {
         ITestContext arayüzü TestNG testlerinde testler arasında bilgi paylaşmak için kullanılan bir arayüzdür.
          */
         // Set up the base URI for RestAssured using the Trello base URL from configuration
-        //Yapılandırmadaki Trello temel URL'sini kullanarak RestAssured için temel URI'yi ayarlayın
+        //Trello URL'ini RestAssured için temel URI'yi ayarla
         RestAssured.baseURI = ConfigReader.getProperty("TrelloBaseUrl");
 
         // Access the test suite to store and share common attributes across test methods
