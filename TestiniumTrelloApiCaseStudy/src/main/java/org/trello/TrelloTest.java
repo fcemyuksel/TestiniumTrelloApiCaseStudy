@@ -96,7 +96,7 @@ public class TrelloTest {
                 .extract().jsonPath().get("id");
 
         // Set the created list ID in suite attributes for potential future use
-        // Gelecekteki potansiyel kullanım için paket özelliklerinde oluşturulan liste kimliğini ayarlayın
+        // Daha sonra kullanım için paket özelliklerinde oluşturulan liste kimliğini ayarlayın
         suite.setAttribute("listId", listId);
         Thread.sleep(2000);
     }
