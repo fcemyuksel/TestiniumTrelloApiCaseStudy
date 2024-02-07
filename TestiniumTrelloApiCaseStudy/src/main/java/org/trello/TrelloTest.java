@@ -34,7 +34,7 @@ public class TrelloTest {
         // parametrelerini ve diğer özelliklerini gruplayan bir yapıdır
 
         // Set test attributes for reuse in different test methods
-        //Farklı test yöntemlerinde yeniden kullanılmak üzere test niteliklerini ayarlayın
+        //Farklı testlerde kullanmak üzere test niteliklerini ayarla
         suite.setAttribute("listName", "Trello List");
         suite.setAttribute("cardName2", "CEM Trello Card2");
         suite.setAttribute("boardName", "CEM YUKSEL Trello Board");
@@ -63,7 +63,7 @@ public class TrelloTest {
                 .post(BOARD_ENDPOINT)
                 //post() metodu ile belirtilen endpointe bir POST isteği yapılır
                 .then()
-                //then() metodu ve zincirleme yapı kullanılarak, isteğin yanıtının kontrolü gerçekleştirilir
+                //then() metodu istenen yanıtının kontrolü gerçekleştirilir
                 .statusCode(200)
                 //HTTP durum kodunun 200 (Başarılı) olup olmadığı kontrol edilir
                 .extract().jsonPath().get("id");
